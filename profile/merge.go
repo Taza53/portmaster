@@ -1,12 +1,15 @@
 package profile
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"sync"
 	"time"
 
+	"github.com/labstack/gommon/log"
 	"github.com/safing/portbase/database/record"
+	"github.com/safing/portmaster/netquery"
 )
 
 // MergeProfiles merges multiple profiles into a new one.
@@ -73,11 +76,20 @@ func MergeProfiles(name string, primary *Profile, secondaries ...*Profile) (newP
 		return nil, fmt.Errorf("failed to save merged profile: %w", err)
 	}
 
+	// update history database
+	if err := netquery.DefaultModule.Store.UpdateProfileKey(context.TODO(), primary.ScopedID(), newProfile.ScopedID()); err != nil {
+		log.Warnf("failed to update profile keys in history: %s", err)
+	}
+
 	// Delete all previous profiles.
 	if err := primary.delete(); err != nil {
 		return nil, fmt.Errorf("failed to delete primary profile %s: %w", primary.ScopedID(), err)
 	}
 	for _, sp := range secondaries {
+		if err := netquery.DefaultModule.Store.UpdateProfileKey(context.TODO(), sp.ScopedID(), newProfile.ScopedID()); err != nil {
+			log.Warnf("failed to update profile keys in history: %s", err)
+		}
+
 		if err := sp.delete(); err != nil {
 			return nil, fmt.Errorf("failed to delete secondary profile %s: %w", sp.ScopedID(), err)
 		}

@@ -432,6 +432,13 @@ func (db *Database) RemoveHistoryForProfile(ctx context.Context, profileID strin
 	}))
 }
 
+func (db *Database) UpdateProfileKey(ctx context.Context, old string, new string) error {
+	return db.ExecuteWrite(ctx, "UPDATE history.connections SET profile = :new WHERE profile = :old", orm.WithNamedArgs(map[string]any{
+		":old": old,
+		":new": new,
+	}))
+}
+
 // dumpTo is a simple helper method that dumps all rows stored in the SQLite database
 // as JSON to w.
 // Any error aborts dumping rows and is returned.
